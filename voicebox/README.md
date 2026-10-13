@@ -29,7 +29,7 @@ Referência: 13,6 s de uma locução (locutor com autorização), com a transcri
 | Chatterbox Multilingual (clone) | 40 s | ~3 min 52 s | ~6x mais lento que o tempo real |
 | Qwen3-TTS 0.6B (clone) | 45 s | ~4 min 8 s | ~5,5x mais lento que o tempo real |
 
-Os dois clones ficaram inteligíveis (conferido com Whisper). Na CPU, um podcast de 3 minutos levaria cerca de 17 a 18 minutos, acima do limite de 15 minutos da seção 7D. Para usar clone no Radar, aumente esse limite ou rode o Voicebox numa máquina com GPU.
+Os dois clones ficaram inteligíveis (conferido com Whisper). **Na avaliação do Eliel, o clone do Qwen3-TTS ficou bem melhor** e é o motor escolhido para os próximos passos. Na CPU, um podcast de 3 minutos levaria cerca de 17 a 18 minutos, acima do limite de 15 minutos da seção 7D. Para usar clone no Radar, aumente esse limite ou rode o Voicebox numa máquina com GPU.
 
 Como criar o perfil clonado:
 
