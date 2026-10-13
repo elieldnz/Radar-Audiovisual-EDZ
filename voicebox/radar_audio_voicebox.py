@@ -4,7 +4,8 @@ Alternativa à seção 7D: mesmo contrato de entrada e saída.
 Uso: python radar_audio_voicebox.py <saida.mp3> [radar.json]
 Requer um servidor Voicebox rodando (VOICEBOX_URL, padrão http://127.0.0.1:17493).
 Variáveis opcionais: VOICEBOX_PROFILE (nome do perfil, padrão "Dora Radar"),
-VOICEBOX_ENGINE (padrão kokoro) e VOICEBOX_VOICE (padrão pf_dora).
+VOICEBOX_ENGINE (padrão kokoro), VOICEBOX_VOICE (padrão pf_dora) e
+VOICEBOX_MODEL_SIZE (ex.: 0.6B para o Qwen3-TTS).
 """
 import io, json, os, sys, time, urllib.request
 import numpy as np, soundfile as sf, lameenc
@@ -31,7 +32,10 @@ def profile_id():
 
 
 def speak(pid, text):
-    g = call('POST', '/generate', {'profile_id': pid, 'text': text, 'language': 'pt', 'engine': ENGINE})
+    req = {'profile_id': pid, 'text': text, 'language': 'pt', 'engine': ENGINE}
+    if os.environ.get('VOICEBOX_MODEL_SIZE'):
+        req['model_size'] = os.environ['VOICEBOX_MODEL_SIZE']
+    g = call('POST', '/generate', req)
     while True:
         h = call('GET', '/history/' + g['id'])
         if h['status'] == 'completed':
