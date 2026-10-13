@@ -50,3 +50,12 @@ Correções necessárias neste ambiente:
 - **Python 3.12**: o pacote `kokoro` exigido pelo Voicebox não instala no Python 3.13.
 - **Rede**: o Voicebox baixa os modelos do Hugging Face. No ambiente deste teste o `huggingface.co` estava bloqueado; os pesos do Kokoro (`kokoro-v1_0.pth`, `config.json`) e a voz `pf_dora.pt` vieram de espelhos no GitHub (releases do `remsky/Kokoro-FastAPI`) e foram colocados no cache local com `HF_HUB_OFFLINE=1`. As dependências do LuxTTS (`k2-fsa.github.io`) também estavam bloqueadas e foram puladas, sem efeito no Kokoro.
 - **Peso**: o setup do Voicebox (torch e oito motores) é bem mais pesado que o do `kokoro-onnx`. Com a mesma voz `pf_dora`, o ganho real do Voicebox está nos outros motores, como clonar a voz do Eliel (Chatterbox Multilingual ou Qwen3-TTS, ambos com português), aplicar efeitos e usar o editor de stories. Esses motores não foram testados aqui porque os pesos deles só estão no Hugging Face.
+
+## Integração na seção 7D (pendente: download da amostra)
+
+A seção 7D do README principal já usa o Qwen3-TTS 0.6B com a voz clonada, um limite de 22 minutos e a pf_dora de reserva. As regras de pronúncia estão na seção 7A (EDZ vira "é dê zê" e as outras siglas também são escritas como se falam). Falta definir como cada execução copia a amostra `voz_ref.ogg` do Google Drive para `/tmp/voz_ref.ogg`. Opções:
+
+1. Gerar um novo refresh token OAuth com os escopos `gmail.send` e `drive.readonly` e baixar pela API do Drive (`files/<id>?alt=media`), com o ID do arquivo numa variável de ambiente (`VOZ_DRIVE_ID`).
+2. Compartilhar o arquivo por link e baixá-lo com o ID numa variável de ambiente. É mais simples, mas qualquer pessoa com o link consegue baixar a voz.
+
+Enquanto isso não for definido, `/tmp/voz_ref.ogg` não existe e o Radar sai com a pf_dora.
