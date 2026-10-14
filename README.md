@@ -6,9 +6,9 @@ Stories + Podcast em MP3
 
 ## 0. OPERAÇÃO (siga estes passos em toda execução)
 
-1. **Prepare o áudio em segundo plano logo no início** (rode no Bash com run_in_background, enquanto você pesquisa):
+1. **Prepare o áudio em segundo plano logo no início** (rode no Bash com run_in_background, enquanto você pesquisa). São duas preparações: a voz de reserva pf_dora (rápida, grava `SETUP_OK` em `/tmp/setup.log`) e a voz clonada com Qwen3-TTS (mais pesada, cerca de 6 GB, grava `QWEN_OK` em `/tmp/setup_qwen.log`):
 ```
-cd /tmp && (apt-get update -qq && apt-get install -y -qq espeak-ng) > /tmp/setup.log 2>&1 && python3 -m venv /tmp/venv && /tmp/venv/bin/pip install -q kokoro-onnx soundfile lameenc >> /tmp/setup.log 2>&1 && curl -fsSL -o /tmp/kokoro-v1.0.int8.onnx https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.int8.onnx && curl -fsSL -o /tmp/voices-v1.0.bin https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin && echo SETUP_OK >> /tmp/setup.log
+cd /tmp && (apt-get update -qq && apt-get install -y -qq espeak-ng) > /tmp/setup.log 2>&1 && python3 -m venv /tmp/venv && /tmp/venv/bin/pip install -q kokoro-onnx soundfile lameenc >> /tmp/setup.log 2>&1 && curl -fsSL -o /tmp/kokoro-v1.0.int8.onnx https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.int8.onnx && curl -fsSL -o /tmp/voices-v1.0.bin https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin && echo SETUP_OK >> /tmp/setup.log ; P="uv pip install -q --python /tmp/venv/bin/python"; command -v uv >/dev/null || P="/tmp/venv/bin/pip install -q"; ($P qwen-tts && /tmp/venv/bin/python -c "from huggingface_hub import snapshot_download as s; s('Qwen/Qwen3-TTS-12Hz-0.6B-Base'); s('Qwen/Qwen3-TTS-Tokenizer-12Hz')" && echo QWEN_OK) > /tmp/setup_qwen.log 2>&1
 ```
 2. **Edição:** rode `date -u`. Por volta de 11h UTC = **Manhã** (8h de Brasília); por volta de 17h UTC = **Tarde** (14h de Brasília). Em outros horários: Manhã antes das 15h UTC, Tarde depois. Use a data de Brasília (UTC-3). Se já existir um Radar com o mesmo assunto (mesma edição e data), esta execução é uma edição **Extra** (seção 13).
 3. **Radares anteriores:** no Gmail (conector), busque `subject:"Radar Audiovisual" newer_than:3d` e leia-os (get_message, PLAIN_TEXT). Base da regra anti-repetição (seções 5 e 11).
@@ -101,7 +101,8 @@ Monte de 7 a 11 stories, nesta ordem:
 Cada story tem:
 - **titulo**: manchete curta, no máximo 60 caracteres, sem emoji.
 - **texto**: no máximo 2 frases e 200 caracteres, com o que aconteceu e o impacto para a EDZ. Para ideias: o que fazer e como testar. Para a ação: a ação e o resultado esperado.
-- **fala**: o roteiro de narração do story (vira o MP3), com 2 a 4 frases em tom de apresentadora de podcast, conversando com o Eliel. Explique o porquê e o impacto para a EDZ, que não cabem no texto. Frases curtas e naturais. Não use URLs, emojis, siglas soltas, símbolos nem markdown. Escreva números, preços e siglas como devem ser falados (ex.: "cerca de oito mil reais", "quatro K", "O B S"). Diga claramente quando algo é rumor ou hipótese.
+- **fala**: o roteiro de narração do story (vira o MP3), com 2 a 4 frases em tom de podcast, conversando com o Eliel. Explique o porquê e o impacto para a EDZ, que não cabem no texto. Frases curtas e naturais. Não use URLs, emojis, siglas soltas, símbolos nem markdown. Diga claramente quando algo é rumor ou hipótese.
+  - **Pronúncia (a fala é lida por uma voz sintética):** escreva números, preços, nomes e siglas como devem soar em português. Siglas letra por letra, com o nome das letras: EDZ vira "é dê zê", OBS vira "ó bê ésse", ATEM vira "átem", 4K vira "quatro cá". Números por extenso ("cerca de oito mil reais"). Nomes estrangeiros como se falam ("Sôni" para Sony, "Dêji" para DJI). Na fala, escreva o nome do Eliel como "Eliéu" (ex.: "Bom dia, Eliéu"), que é como a voz pronuncia certo; no título e no texto, continue escrevendo "Eliel".
 - **fonte**: URL direta da fonte (não use links de redirecionamento do Google). Vazio em abertura, ideia, ação e fechamento quando não houver fonte.
 - **status**: "fato", "declaração", "rumor" ou "hipótese".
 
@@ -128,31 +129,71 @@ Texto simples, sem markdown:
 === FIM_RADAR_PLAYER ===
 ```
 
-### 7D. MP3 com a voz pf_dora
+### 7D. MP3 com a voz clonada (Qwen3-TTS), com pf_dora de reserva
 
-Confira que `/tmp/setup.log` termina com `SETUP_OK` (se o preparo ainda estiver rodando, espere-o terminar). Crie `/tmp/radar_audio.py` com exatamente este conteúdo e rode `/tmp/venv/bin/python /tmp/radar_audio.py /tmp/Radar-EDZ-<Manha|Tarde|Extra>-<DD-MM>.mp3` (timeout de 15 minutos; pode levar alguns minutos):
+Confira que `/tmp/setup.log` termina com `SETUP_OK` (se o preparo ainda estiver rodando, espere-o terminar). A voz clonada é opcional: ela só é usada se `/tmp/setup_qwen.log` terminar com `QWEN_OK` **e** existir a amostra de voz `/tmp/voz_ref.ogg`. Sem qualquer uma das duas, o script usa a pf_dora sozinho, sem erro.
+
+**Amostra de voz:** a amostra fica no Google Drive do Eliel (`voz_ref.ogg`, 13 s, privada), fora do repositório porque ele é público. O script a baixa pela API do Drive usando as mesmas credenciais do Gmail (o `GMAIL_REFRESH_TOKEN` precisa ter os escopos `gmail.send` e `drive.readonly`) e o ID do arquivo na variável `VOZ_DRIVE_ID`. Se faltar alguma dessas variáveis ou o download falhar, o Radar sai com a pf_dora. Nunca mostre o valor dessas variáveis.
+
+Crie `/tmp/radar_audio.py` com exatamente este conteúdo e rode `/tmp/venv/bin/python /tmp/radar_audio.py /tmp/Radar-EDZ-<Manha|Tarde|Extra>-<DD-MM>.mp3 > /tmp/audio.log 2>&1` **com run_in_background** (a voz clonada leva cerca de 5 minutos por minuto de áudio, mais do que o limite de um comando normal). Acompanhe `/tmp/audio.log` enquanto monta o HTML e o texto; o script termina sozinho em no máximo 25 minutos: se a próxima fala da voz clonada for passar de 22 minutos (estimativa pela média das falas anteriores), ele descarta o que fez e gera tudo de novo com a pf_dora (cerca de 1 minuto).
 ```python
-import json, sys, numpy as np, lameenc
-from kokoro_onnx import Kokoro
+import json, os, sys, time, urllib.parse, urllib.request, numpy as np, lameenc
+LIMITE_CLONE_S = 22 * 60
+REF = '/tmp/voz_ref.ogg'
+REF_TEXT = 'O futuro não acontece por acaso. Ele nasce das escolhas que fazemos hoje, das conexões que criamos, dos caminhos que decidimos explorar. E é para quem enxerga o amanhã, desde agora, que a Tech Trip foi criada.'
 d = json.load(open('/tmp/radar.json', encoding='utf-8'))
-k = Kokoro('/tmp/kokoro-v1.0.int8.onnx', '/tmp/voices-v1.0.bin')
-sr = 24000
-parts = []
-for s in d['slides']:
-    t = (s.get('fala') or (s.get('titulo', '') + '. ' + s.get('texto', ''))).strip()
-    if not t:
-        continue
-    a, sr = k.create(t, voice='pf_dora', speed=1.0, lang='pt-br')
-    parts += [a.astype(np.float32), np.zeros(int(sr * 0.7), dtype=np.float32)]
-audio = np.concatenate(parts)
+falas = [t for t in ((s.get('fala') or (s.get('titulo', '') + '. ' + s.get('texto', ''))).strip() for s in d['slides']) if t]
+
+def baixar_ref():
+    body = urllib.parse.urlencode({'client_id': os.environ['GMAIL_CLIENT_ID'], 'client_secret': os.environ['GMAIL_CLIENT_SECRET'], 'refresh_token': os.environ['GMAIL_REFRESH_TOKEN'], 'grant_type': 'refresh_token'}).encode()
+    token = json.load(urllib.request.urlopen('https://oauth2.googleapis.com/token', data=body))['access_token']
+    req = urllib.request.Request('https://www.googleapis.com/drive/v3/files/%s?alt=media' % os.environ['VOZ_DRIVE_ID'], headers={'Authorization': 'Bearer ' + token})
+    open(REF, 'wb').write(urllib.request.urlopen(req, timeout=60).read())
+
+def clone():
+    import torch
+    from qwen_tts import Qwen3TTSModel
+    if not os.path.exists(REF):
+        baixar_ref()
+    if 'QWEN_OK' not in open('/tmp/setup_qwen.log', encoding='utf-8', errors='ignore').read():
+        raise RuntimeError('preparo do Qwen3-TTS incompleto')
+    t0 = time.time()
+    m = Qwen3TTSModel.from_pretrained('Qwen/Qwen3-TTS-12Hz-0.6B-Base', torch_dtype=torch.float32, low_cpu_mem_usage=False)
+    p = m.create_voice_clone_prompt(ref_audio=REF, ref_text=REF_TEXT)
+    parts, sr = [], 24000
+    for i, t in enumerate(falas):
+        gasto = time.time() - t0
+        if gasto + (gasto / i if i else 0) > LIMITE_CLONE_S:
+            raise TimeoutError('a fala %d de %d passaria do limite de tempo' % (i + 1, len(falas)))
+        with torch.inference_mode():
+            w, sr = m.generate_voice_clone(text=t, language='Portuguese', voice_clone_prompt=p)
+        parts.append(np.asarray(w[0], dtype=np.float32))
+        print('fala %d/%d ok (%.0f s)' % (i + 1, len(falas), time.time() - t0), flush=True)
+    return parts, sr
+
+def dora():
+    from kokoro_onnx import Kokoro
+    k = Kokoro('/tmp/kokoro-v1.0.int8.onnx', '/tmp/voices-v1.0.bin')
+    parts, sr = [], 24000
+    for t in falas:
+        a, sr = k.create(t, voice='pf_dora', speed=1.0, lang='pt-br')
+        parts.append(a.astype(np.float32))
+    return parts, sr
+
+try:
+    parts, sr = clone(); voz = 'clone'
+except Exception as e:
+    print('clone indisponível (%s: %s); usando pf_dora' % (type(e).__name__, e), flush=True)
+    parts, sr = dora(); voz = 'pf_dora'
+audio = np.concatenate([x for p in parts for x in (p, np.zeros(int(sr * 0.7), dtype=np.float32))])
 pcm = (np.clip(audio, -1, 1) * 32767).astype(np.int16).tobytes()
 enc = lameenc.Encoder()
 enc.set_bit_rate(48); enc.set_in_sample_rate(sr); enc.set_channels(1); enc.set_quality(2)
 mp3 = enc.encode(pcm) + enc.flush()
 open(sys.argv[1], 'wb').write(mp3)
-print('duracao_s=%.0f bytes=%d' % (len(audio) / sr, len(mp3)))
+print('voz=%s duracao_s=%.0f bytes=%d' % (voz, len(audio) / sr, len(mp3)))
 ```
-Use a duração impressa para a linha "🎧 Podcast de X min" do HTML. Se a geração falhar, não fique tentando por muito tempo: siga sem áudio (remova a linha do podcast do HTML) e registre o motivo.
+A última linha de `/tmp/audio.log` traz `voz=clone` ou `voz=pf_dora` e a duração. Use a duração para a linha "🎧 Podcast de X min" do HTML. Se a geração falhar de vez, siga sem áudio (remova a linha do podcast do HTML) e registre o motivo.
 
 ### 7E. Envio
 
