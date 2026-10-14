@@ -135,7 +135,7 @@ Confira que `/tmp/setup.log` termina com `SETUP_OK` (se o preparo ainda estiver 
 
 **Amostra de voz:** a amostra fica no Google Drive do Eliel (`voz_ref.ogg`, 13 s, privada), fora do repositório porque ele é público. O script a baixa pela API do Drive usando as mesmas credenciais do Gmail (o `GMAIL_REFRESH_TOKEN` precisa ter os escopos `gmail.send` e `drive.readonly`) e o ID do arquivo na variável `VOZ_DRIVE_ID`. Se faltar alguma dessas variáveis ou o download falhar, o Radar sai com a pf_dora. Nunca mostre o valor dessas variáveis.
 
-Crie `/tmp/radar_audio.py` com exatamente este conteúdo e rode `/tmp/venv/bin/python /tmp/radar_audio.py /tmp/Radar-EDZ-<Manha|Tarde|Extra>-<DD-MM>.mp3 > /tmp/audio.log 2>&1` **com run_in_background** (a voz clonada leva cerca de 5 minutos por minuto de áudio, mais do que o limite de um comando normal). Acompanhe `/tmp/audio.log` enquanto monta o HTML e o texto; o script termina sozinho em no máximo 25 minutos: se a voz clonada passar de 22 minutos, ele descarta o que fez e gera tudo de novo com a pf_dora (cerca de 1 minuto).
+Crie `/tmp/radar_audio.py` com exatamente este conteúdo e rode `/tmp/venv/bin/python /tmp/radar_audio.py /tmp/Radar-EDZ-<Manha|Tarde|Extra>-<DD-MM>.mp3 > /tmp/audio.log 2>&1` **com run_in_background** (a voz clonada leva cerca de 5 minutos por minuto de áudio, mais do que o limite de um comando normal). Acompanhe `/tmp/audio.log` enquanto monta o HTML e o texto; o script termina sozinho em no máximo 25 minutos: se a próxima fala da voz clonada for passar de 22 minutos (estimativa pela média das falas anteriores), ele descarta o que fez e gera tudo de novo com a pf_dora (cerca de 1 minuto).
 ```python
 import json, os, sys, time, urllib.parse, urllib.request, numpy as np, lameenc
 LIMITE_CLONE_S = 22 * 60
@@ -162,8 +162,9 @@ def clone():
     p = m.create_voice_clone_prompt(ref_audio=REF, ref_text=REF_TEXT)
     parts, sr = [], 24000
     for i, t in enumerate(falas):
-        if time.time() - t0 > LIMITE_CLONE_S:
-            raise TimeoutError('limite de tempo na fala %d de %d' % (i + 1, len(falas)))
+        gasto = time.time() - t0
+        if gasto + (gasto / i if i else 0) > LIMITE_CLONE_S:
+            raise TimeoutError('a fala %d de %d passaria do limite de tempo' % (i + 1, len(falas)))
         with torch.inference_mode():
             w, sr = m.generate_voice_clone(text=t, language='Portuguese', voice_clone_prompt=p)
         parts.append(np.asarray(w[0], dtype=np.float32))
