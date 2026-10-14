@@ -102,7 +102,7 @@ Cada story tem:
 - **titulo**: manchete curta, no máximo 60 caracteres, sem emoji.
 - **texto**: no máximo 2 frases e 200 caracteres, com o que aconteceu e o impacto para a EDZ. Para ideias: o que fazer e como testar. Para a ação: a ação e o resultado esperado.
 - **fala**: o roteiro de narração do story (vira o MP3), com 2 a 4 frases em tom de podcast, conversando com o Eliel. Explique o porquê e o impacto para a EDZ, que não cabem no texto. Frases curtas e naturais. Não use URLs, emojis, siglas soltas, símbolos nem markdown. Diga claramente quando algo é rumor ou hipótese.
-  - **Pronúncia (a fala é lida por uma voz sintética):** escreva números, preços, nomes e siglas como devem soar em português. Siglas letra por letra, com o nome das letras: EDZ vira "é dê zê", OBS vira "ó bê ésse", ATEM vira "átem", 4K vira "quatro cá". Números por extenso ("cerca de oito mil reais"). Nomes estrangeiros como se falam ("Sôni" para Sony, "Dêji" para DJI). O nome do Eliel fica escrito "Eliel".
+  - **Pronúncia (a fala é lida por uma voz sintética):** escreva números, preços, nomes e siglas como devem soar em português. Siglas letra por letra, com o nome das letras: EDZ vira "é dê zê", OBS vira "ó bê ésse", ATEM vira "átem", 4K vira "quatro cá". Números por extenso ("cerca de oito mil reais"). Nomes estrangeiros como se falam ("Sôni" para Sony, "Dêji" para DJI). Na fala, escreva o nome do Eliel como "Eliéu" (ex.: "Bom dia, Eliéu"), que é como a voz pronuncia certo; no título e no texto, continue escrevendo "Eliel".
 - **fonte**: URL direta da fonte (não use links de redirecionamento do Google). Vazio em abertura, ideia, ação e fechamento quando não houver fonte.
 - **status**: "fato", "declaração", "rumor" ou "hipótese".
 
@@ -133,22 +133,28 @@ Texto simples, sem markdown:
 
 Confira que `/tmp/setup.log` termina com `SETUP_OK` (se o preparo ainda estiver rodando, espere-o terminar). A voz clonada é opcional: ela só é usada se `/tmp/setup_qwen.log` terminar com `QWEN_OK` **e** existir a amostra de voz `/tmp/voz_ref.ogg`. Sem qualquer uma das duas, o script usa a pf_dora sozinho, sem erro.
 
-**Amostra de voz:** a amostra fica no Google Drive do Eliel (`voz_ref.ogg`, 13 s), fora do repositório porque ele é público. A forma automática de copiá-la para `/tmp/voz_ref.ogg` ainda não foi definida (veja `voicebox/README.md`); até lá, o arquivo não existe e o Radar sai com a pf_dora.
+**Amostra de voz:** a amostra fica no Google Drive do Eliel (`voz_ref.ogg`, 13 s, privada), fora do repositório porque ele é público. O script a baixa pela API do Drive usando as mesmas credenciais do Gmail (o `GMAIL_REFRESH_TOKEN` precisa ter os escopos `gmail.send` e `drive.readonly`) e o ID do arquivo na variável `VOZ_DRIVE_ID`. Se faltar alguma dessas variáveis ou o download falhar, o Radar sai com a pf_dora. Nunca mostre o valor dessas variáveis.
 
 Crie `/tmp/radar_audio.py` com exatamente este conteúdo e rode `/tmp/venv/bin/python /tmp/radar_audio.py /tmp/Radar-EDZ-<Manha|Tarde|Extra>-<DD-MM>.mp3 > /tmp/audio.log 2>&1` **com run_in_background** (a voz clonada leva cerca de 5 minutos por minuto de áudio, mais do que o limite de um comando normal). Acompanhe `/tmp/audio.log` enquanto monta o HTML e o texto; o script termina sozinho em no máximo 25 minutos: se a voz clonada passar de 22 minutos, ele descarta o que fez e gera tudo de novo com a pf_dora (cerca de 1 minuto).
 ```python
-import json, os, sys, time, numpy as np, lameenc
+import json, os, sys, time, urllib.parse, urllib.request, numpy as np, lameenc
 LIMITE_CLONE_S = 22 * 60
 REF = '/tmp/voz_ref.ogg'
 REF_TEXT = 'O futuro não acontece por acaso. Ele nasce das escolhas que fazemos hoje, das conexões que criamos, dos caminhos que decidimos explorar. E é para quem enxerga o amanhã, desde agora, que a Tech Trip foi criada.'
 d = json.load(open('/tmp/radar.json', encoding='utf-8'))
 falas = [t for t in ((s.get('fala') or (s.get('titulo', '') + '. ' + s.get('texto', ''))).strip() for s in d['slides']) if t]
 
+def baixar_ref():
+    body = urllib.parse.urlencode({'client_id': os.environ['GMAIL_CLIENT_ID'], 'client_secret': os.environ['GMAIL_CLIENT_SECRET'], 'refresh_token': os.environ['GMAIL_REFRESH_TOKEN'], 'grant_type': 'refresh_token'}).encode()
+    token = json.load(urllib.request.urlopen('https://oauth2.googleapis.com/token', data=body))['access_token']
+    req = urllib.request.Request('https://www.googleapis.com/drive/v3/files/%s?alt=media' % os.environ['VOZ_DRIVE_ID'], headers={'Authorization': 'Bearer ' + token})
+    open(REF, 'wb').write(urllib.request.urlopen(req, timeout=60).read())
+
 def clone():
     import torch
     from qwen_tts import Qwen3TTSModel
     if not os.path.exists(REF):
-        raise FileNotFoundError(REF)
+        baixar_ref()
     if 'QWEN_OK' not in open('/tmp/setup_qwen.log', encoding='utf-8', errors='ignore').read():
         raise RuntimeError('preparo do Qwen3-TTS incompleto')
     t0 = time.time()

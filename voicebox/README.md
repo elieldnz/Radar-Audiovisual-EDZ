@@ -51,11 +51,23 @@ Correções necessárias neste ambiente:
 - **Rede**: o Voicebox baixa os modelos do Hugging Face. No ambiente deste teste o `huggingface.co` estava bloqueado; os pesos do Kokoro (`kokoro-v1_0.pth`, `config.json`) e a voz `pf_dora.pt` vieram de espelhos no GitHub (releases do `remsky/Kokoro-FastAPI`) e foram colocados no cache local com `HF_HUB_OFFLINE=1`. As dependências do LuxTTS (`k2-fsa.github.io`) também estavam bloqueadas e foram puladas, sem efeito no Kokoro.
 - **Peso**: o setup do Voicebox (torch e oito motores) é bem mais pesado que o do `kokoro-onnx`. Com a mesma voz `pf_dora`, o ganho real do Voicebox está nos outros motores, como clonar a voz do Eliel (Chatterbox Multilingual ou Qwen3-TTS, ambos com português), aplicar efeitos e usar o editor de stories. Esses motores não foram testados aqui porque os pesos deles só estão no Hugging Face.
 
-## Integração na seção 7D (pendente: download da amostra)
+## Integração na seção 7D
 
-A seção 7D do README principal já usa o Qwen3-TTS 0.6B com a voz clonada, um limite de 22 minutos e a pf_dora de reserva. As regras de pronúncia estão na seção 7A (EDZ vira "é dê zê" e as outras siglas também são escritas como se falam). Falta definir como cada execução copia a amostra `voz_ref.ogg` do Google Drive para `/tmp/voz_ref.ogg`. Opções:
+A seção 7D do README principal usa o Qwen3-TTS 0.6B com a voz clonada, um limite de 22 minutos e a pf_dora de reserva. As regras de pronúncia estão na seção 7A: na fala, EDZ vira "é dê zê" e Eliel vira "Eliéu" (a grafia aprovada no teste de pronúncia).
 
-1. Gerar um novo refresh token OAuth com os escopos `gmail.send` e `drive.readonly` e baixar pela API do Drive (`files/<id>?alt=media`), com o ID do arquivo numa variável de ambiente (`VOZ_DRIVE_ID`).
-2. Compartilhar o arquivo por link e baixá-lo com o ID numa variável de ambiente. É mais simples, mas qualquer pessoa com o link consegue baixar a voz.
+A amostra `voz_ref.ogg` está no Google Drive do Eliel, privada. O script a baixa pela API do Drive com o mesmo OAuth do Gmail.
 
-Enquanto isso não for definido, `/tmp/voz_ref.ogg` não existe e o Radar sai com a pf_dora.
+### Configuração (uma vez)
+
+1. **Ative a Google Drive API** no projeto do Google Cloud onde está o cliente OAuth do Gmail (APIs e serviços → Biblioteca → Google Drive API → Ativar).
+2. **Gere um refresh token com os dois escopos.** Um jeito fácil é o OAuth Playground (https://developers.google.com/oauthplayground):
+   - Engrenagem → marque "Use your own OAuth credentials" e cole o Client ID e o Client Secret que já estão nas variáveis `GMAIL_CLIENT_ID` e `GMAIL_CLIENT_SECRET`. Se o cliente OAuth for do tipo "Aplicativo da Web", adicione `https://developers.google.com/oauthplayground` como URI de redirecionamento autorizado.
+   - Em "Input your own scopes", cole: `https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/drive.readonly`
+   - Authorize APIs → entre com elieldnz@gmail.com → Exchange authorization code for tokens → copie o **Refresh token**.
+3. **Atualize as variáveis do ambiente** (Editar ambiente → Variáveis de ambiente):
+   - `GMAIL_REFRESH_TOKEN=<o refresh token novo>`
+   - `VOZ_DRIVE_ID=1GI-QWGOUfmBGLCdIS0dXP-f__94O_pRl`
+
+Atenção: se o app OAuth estiver com status de publicação "Em teste", o Google expira o refresh token em 7 dias. Para não precisar refazer o passo 2 toda semana, publique o app como "Em produção" (Tela de consentimento OAuth → Publicar app). Para uso pessoal, não precisa de verificação; o Google só mostra um aviso de app não verificado no login.
+
+Se faltar alguma variável, ou se o download falhar, o Radar continua saindo com a pf_dora. A última linha do log de áudio diz qual voz foi usada (`voz=clone` ou `voz=pf_dora`).
