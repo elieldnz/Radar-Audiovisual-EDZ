@@ -98,11 +98,11 @@ async def main():
                 linhas = [' '.join(l.split())[:300] for l in t.splitlines() if re.search(r'R\$\s?[\d.]+,\d{2}', l)]
                 print('\n'.join(linhas[:40]) or 'sem preços na página')
             else:
-                print(md[:8000])
+                print(md[:25000])
 asyncio.run(main())
 EOF
 ```
-Uso: `cd /tmp && /tmp/c4/bin/python /tmp/radar_web.py --precos https://www.kabum.com.br/busca/dji-mic-3` ou `cd /tmp && /tmp/c4/bin/python /tmp/radar_web.py <url> [<url> ...]`. Cada página leva de 5 a 30 segundos.
+Uso: `cd /tmp && /tmp/c4/bin/python /tmp/radar_web.py --precos https://www.kabum.com.br/busca/dji-mic-3` ou `cd /tmp && /tmp/c4/bin/python /tmp/radar_web.py <url> [<url> ...]`. Cada página leva de 5 a 30 segundos e mostra até 25 mil caracteres; o preço costuma ficar no fim das matérias.
 
 Com `--precos`, cada linha traz o nome do produto, o preço e o link. A busca da KaBuM mistura acessórios e produtos parecidos: escolha a linha cujo nome bate com o modelo exato, informe o preço como "a partir de R$ X na KaBuM (consulta em DD/MM)" e use o link do produto como fonte. Se nenhuma linha bater com o modelo, não informe preço. Nunca estime nem arredonde a partir de outro modelo.
 
