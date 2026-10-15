@@ -10,9 +10,13 @@ Stories + Podcast em MP3
 ```
 cd /tmp && (apt-get update -qq && apt-get install -y -qq espeak-ng) > /tmp/setup.log 2>&1 && python3 -m venv /tmp/venv && /tmp/venv/bin/pip install -q kokoro-onnx soundfile lameenc >> /tmp/setup.log 2>&1 && curl -fsSL -o /tmp/kokoro-v1.0.int8.onnx https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.int8.onnx && curl -fsSL -o /tmp/voices-v1.0.bin https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin && echo SETUP_OK >> /tmp/setup.log ; P="uv pip install -q --python /tmp/venv/bin/python"; command -v uv >/dev/null || P="/tmp/venv/bin/pip install -q"; ($P qwen-tts && /tmp/venv/bin/python -c "from huggingface_hub import snapshot_download as s; s('Qwen/Qwen3-TTS-12Hz-0.6B-Base'); s('Qwen/Qwen3-TTS-Tokenizer-12Hz')" && echo QWEN_OK) > /tmp/setup_qwen.log 2>&1
 ```
+Em outra chamada com run_in_background, prepare também o leitor de páginas da seção 4A (grava `C4_OK` em `/tmp/setup_c4.log`):
+```
+(python3 -m venv /tmp/c4 && /tmp/c4/bin/pip install -q crawl4ai "playwright==1.56.0" && echo C4_OK) > /tmp/setup_c4.log 2>&1
+```
 2. **Edição:** rode `date -u`. Por volta de 11h UTC = **Manhã** (8h de Brasília); por volta de 17h UTC = **Tarde** (14h de Brasília). Em outros horários: Manhã antes das 15h UTC, Tarde depois. Use a data de Brasília (UTC-3). Se já existir um Radar com o mesmo assunto (mesma edição e data), esta execução é uma edição **Extra** (seção 13).
 3. **Radares anteriores:** no Gmail (conector), busque `subject:"Radar Audiovisual" newer_than:3d` e leia-os (get_message, PLAIN_TEXT). Base da regra anti-repetição (seções 5 e 11).
-4. **Pesquisa:** WebSearch e WebFetch.
+4. **Pesquisa:** WebSearch e WebFetch. Para preço no Brasil e para páginas que o WebFetch devolve vazias, use o leitor da seção 4A.
 5. **Monte os arquivos** (seção 7): `/tmp/radar.json` (JSON dos stories), `/tmp/radar.html` (e-mail visual) e `/tmp/radar.txt` (texto simples + bloco JSON do player). Valide o JSON com `python3 -m json.tool /tmp/radar.json`. Antes de gerar o MP3, releia cada `titulo`, `texto` e `fala` procurando os padrões da seção 9A e reescreva o que tiver cara de IA.
 6. **Gere o MP3** (seção 7D).
 7. **Envie** (seção 7E). Sempre e somente para **elieldnz@gmail.com**. Não envie nada para outro destinatário, não responda, não apague e não altere outros e-mails. Envie **um** e-mail por execução. Ao terminar, diga em uma linha se o e-mail foi enviado, com ou sem áudio, e o assunto.
@@ -59,6 +63,48 @@ Pesquise fontes confiáveis e priorize: sites oficiais dos fabricantes; veículo
 Não transforme rumores em fatos. Quando uma informação for rumor, especulação ou ainda não estiver confirmada, identifique claramente essa condição.
 
 Não invente informações, preços, datas, recursos ou tendências. Se não encontrar novidade relevante em determinado tema, informe isso em vez de preencher o espaço com conteúdo antigo ou irrelevante.
+
+### 4A. Leitor de páginas (crawl4ai)
+
+O crawl4ai abre a página num navegador de verdade e devolve o texto em markdown. Use só em dois casos:
+
+1. **Preço no Brasil de um equipamento citado:** busque na KaBuM, `https://www.kabum.com.br/busca/<produto-com-hifens>` (ex.: `dji-mic-3`), com `--precos`.
+2. **Página de fabricante que o WebFetch devolve vazia ou quase vazia**, como a sala de imprensa da DJI (`https://www.dji.com/newsroom`).
+
+Para o resto, continue com WebSearch e WebFetch. Mercado Livre pede login e a DPReview bloqueia o acesso; não perca tempo com eles.
+
+Só use se `/tmp/setup_c4.log` tiver `C4_OK`. Se não tiver, siga sem o leitor. Grave o script uma vez:
+```
+cat > /tmp/radar_web.py <<'EOF'
+import asyncio, os, re, sys
+from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
+precos = sys.argv[1] == '--precos'
+urls = sys.argv[2:] if precos else sys.argv[1:]
+async def main():
+    bc = BrowserConfig(headless=True, proxy_config=os.environ.get('HTTPS_PROXY'), ignore_https_errors=True, verbose=False)
+    rc = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, page_timeout=45000, wait_until='domcontentloaded', delay_before_return_html=2.0, verbose=False)
+    async with AsyncWebCrawler(config=bc) as c:
+        for u in urls:
+            try:
+                r = await c.arun(u, config=rc)
+                md = str(r.markdown or '') if r.success else ''
+            except Exception as e:
+                md = ''
+                print('ERRO %s: %s' % (type(e).__name__, e))
+            print('===== %s (%d caracteres)' % (u, len(md)))
+            if precos:
+                t = re.sub(r'!\[[^\]]*\]\([^)]*\)', '', md)
+                t = re.sub(r'\]\((https?://[^)\s]*)[^)]*\)', r' <\1>\n', t).replace('[', '\n')
+                linhas = [' '.join(l.split())[:300] for l in t.splitlines() if re.search(r'R\$\s?[\d.]+,\d{2}', l)]
+                print('\n'.join(linhas[:40]) or 'sem preços na página')
+            else:
+                print(md[:8000])
+asyncio.run(main())
+EOF
+```
+Uso: `cd /tmp && /tmp/c4/bin/python /tmp/radar_web.py --precos https://www.kabum.com.br/busca/dji-mic-3` ou `cd /tmp && /tmp/c4/bin/python /tmp/radar_web.py <url> [<url> ...]`. Cada página leva de 5 a 30 segundos.
+
+Com `--precos`, cada linha traz o nome do produto, o preço e o link. A busca da KaBuM mistura acessórios e produtos parecidos: escolha a linha cujo nome bate com o modelo exato, informe o preço como "a partir de R$ X na KaBuM (consulta em DD/MM)" e use o link do produto como fonte. Se nenhuma linha bater com o modelo, não informe preço. Nunca estime nem arredonde a partir de outro modelo.
 
 ---
 
