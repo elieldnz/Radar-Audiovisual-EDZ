@@ -1,0 +1,5 @@
+# Notas para o Claude — Radar Audiovisual EDZ
+
+- **O README e a rotina são duas cópias do mesmo prompt.** A rotina "Radar Audiovisual EDZ (8h e 14h)" (`trig_01278NvSC97z2FyEkiRvqyUT`) não lê este repositório: ela guarda uma cópia própria do prompt mestre. Toda mudança no `README.md` precisa ser copiada também para o prompt da rotina, senão o Radar continua rodando com a versão antiga. A rotina foi criada fora do Claude, então só o Eliel consegue editá-la em https://claude.ai/code/routines/trig_01278NvSC97z2FyEkiRvqyUT. Entregue a ele o README atualizado, sem as duas primeiras linhas, para colar.
+- **Voz do podcast:** voz 1 clonada (locutor), com a amostra `voz_ref.ogg` no Google Drive (`VOZ_DRIVE_ID`) e a pf_dora como reserva. A opção de uma segunda voz (`VOZ_ATIVA`, `VOZ2_*`) está guardada na branch `claude/voicebox-radar-audiovisual-edz-0x984i` (commit "Radar 7D: selectable cloned voice"), fora da `main`, até o Eliel pedir.
+- **Repositório público:** nunca coloque amostras de voz, áudios clonados ou transcrições de conversas pessoais no repositório.
