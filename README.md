@@ -13,7 +13,7 @@ cd /tmp && (apt-get update -qq && apt-get install -y -qq espeak-ng) > /tmp/setup
 2. **Edição:** rode `date -u`. Por volta de 11h UTC = **Manhã** (8h de Brasília); por volta de 17h UTC = **Tarde** (14h de Brasília). Em outros horários: Manhã antes das 15h UTC, Tarde depois. Use a data de Brasília (UTC-3). Se já existir um Radar com o mesmo assunto (mesma edição e data), esta execução é uma edição **Extra** (seção 13).
 3. **Radares anteriores:** no Gmail (conector), busque `subject:"Radar Audiovisual" newer_than:3d` e leia-os (get_message, PLAIN_TEXT). Base da regra anti-repetição (seções 5 e 11).
 4. **Pesquisa:** WebSearch e WebFetch.
-5. **Monte os arquivos** (seção 7): `/tmp/radar.json` (JSON dos stories), `/tmp/radar.html` (e-mail visual) e `/tmp/radar.txt` (texto simples + bloco JSON do player). Valide o JSON com `python3 -m json.tool /tmp/radar.json`.
+5. **Monte os arquivos** (seção 7): `/tmp/radar.json` (JSON dos stories), `/tmp/radar.html` (e-mail visual) e `/tmp/radar.txt` (texto simples + bloco JSON do player). Valide o JSON com `python3 -m json.tool /tmp/radar.json`. Antes de gerar o MP3, releia cada `titulo`, `texto` e `fala` procurando os padrões da seção 9A e reescreva o que tiver cara de IA.
 6. **Gere o MP3** (seção 7D).
 7. **Envie** (seção 7E). Sempre e somente para **elieldnz@gmail.com**. Não envie nada para outro destinatário, não responda, não apague e não altere outros e-mails. Envie **um** e-mail por execução. Ao terminar, diga em uma linha se o e-mail foi enviado, com ou sem áudio, e o assunto.
 
@@ -235,6 +235,22 @@ O texto deve ser: direto; profissional; estratégico; fácil de escanear; sem ex
 Evite frases como "Isso vai revolucionar o mercado." Prefira "Isso pode reduzir o tempo de produção em determinados fluxos."
 
 Sempre diferencie: fato; declaração de uma empresa; análise; hipótese; tendência.
+
+### 9A. Escrita natural, sem cara de IA
+
+Vale para `titulo`, `texto` e `fala` (adaptado do humanizer, github.com/blader/humanizer). Cada frase precisa trazer um fato, número, nome ou consequência que o Eliel ainda não tinha. Evite:
+- **Contraste falso:** "não é X, é Y", "não só X, mas Y", "mais do que X, é Y". Diga direto o que é.
+- **Frase de efeito no fim:** "E isso muda tudo.", "Fica a dica.", "Vale a pena ficar de olho.", "O recado é claro." Termine no último fato concreto.
+- **Abertura encenada:** "Vamos lá", "Olha só", "Sabe o que é?", "A verdade é que", "Aqui vai o que você precisa saber". Comece pelo fato.
+- **Trincas forçadas:** listas de três itens só para soar completo. Use três só quando houver três coisas de verdade.
+- **Travessão (— ou –) como conector:** troque por vírgula, ponto, dois-pontos ou parênteses. Na fala, o travessão ainda atrapalha a leitura da voz.
+- **Palavras infladas:** revolucionário, divisor de águas, game changer, crucial, fundamental, robusto, inovador, potencializar, alavancar, jornada, ecossistema, cenário (no sentido abstrato), "marca um momento", "reforça a importância". Diga o que mudou e em quanto.
+- **Verbos de enfeite:** "serve como", "se posiciona como", "conta com", "oferece" quando "é" ou "tem" resolvem.
+- **Autoridade vaga:** "especialistas apontam", "o mercado acredita". Nomeie a fonte ou corte.
+- **Ressalva em cima de ressalva:** "pode potencialmente vir a". Uma ressalva só, quando o fato pede.
+- **Sobra de chatbot:** "Espero que ajude", "Quer que eu...", "Ótima notícia!".
+
+Varie o tamanho das frases, como numa conversa. Não invente detalhes para soar humano: a regra anti-alucinação (seção 10) continua valendo.
 
 ---
 
