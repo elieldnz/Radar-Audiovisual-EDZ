@@ -131,7 +131,7 @@ Texto simples, sem markdown:
 
 ### 7D. MP3 com a voz clonada (Qwen3-TTS), com pf_dora de reserva
 
-Confira que `/tmp/setup.log` termina com `SETUP_OK` (se o preparo ainda estiver rodando, espere-o terminar). A voz clonada é opcional: ela só é usada se `/tmp/setup_qwen.log` terminar com `QWEN_OK` **e** existir a amostra de voz `/tmp/voz_ref.ogg`. Sem qualquer uma das duas, o script usa a pf_dora sozinho, sem erro.
+**Espere o preparo do passo 1 terminar por completo antes de rodar o script.** O comando do passo 1 só termina depois de instalar a voz clonada (cerca de 7 a 10 minutos); espere a notificação de término desse comando em segundo plano, ou use Monitor com `until grep -qE 'QWEN_OK|rror' /tmp/setup_qwen.log 2>/dev/null; do sleep 10; done`. Não rode o script só porque `SETUP_OK` apareceu: sem o Qwen pronto, o Radar sai com a pf_dora. Se passar de 20 minutos desde o início da execução, siga assim mesmo. A voz clonada é opcional: ela só é usada se `/tmp/setup_qwen.log` terminar com `QWEN_OK` **e** existir a amostra de voz `/tmp/voz_ref.ogg`. Sem qualquer uma das duas, o script usa a pf_dora sozinho, sem erro.
 
 **Amostra de voz:** a amostra fica no Google Drive do Eliel (`voz_ref.ogg`, 13 s, privada), fora do repositório porque ele é público. O script a baixa pela API do Drive usando as mesmas credenciais do Gmail (o `GMAIL_REFRESH_TOKEN` precisa ter os escopos `gmail.send` e `drive.readonly`) e o ID do arquivo na variável `VOZ_DRIVE_ID`. Se faltar alguma dessas variáveis ou o download falhar, o Radar sai com a pf_dora. Nunca mostre o valor dessas variáveis.
 
@@ -151,12 +151,12 @@ def baixar_ref():
     open(REF, 'wb').write(urllib.request.urlopen(req, timeout=60).read())
 
 def clone():
+    if not os.path.exists('/tmp/setup_qwen.log') or 'QWEN_OK' not in open('/tmp/setup_qwen.log', encoding='utf-8', errors='ignore').read():
+        raise RuntimeError('preparo do Qwen3-TTS incompleto')
     import torch
     from qwen_tts import Qwen3TTSModel
     if not os.path.exists(REF):
         baixar_ref()
-    if 'QWEN_OK' not in open('/tmp/setup_qwen.log', encoding='utf-8', errors='ignore').read():
-        raise RuntimeError('preparo do Qwen3-TTS incompleto')
     t0 = time.time()
     m = Qwen3TTSModel.from_pretrained('Qwen/Qwen3-TTS-12Hz-0.6B-Base', torch_dtype=torch.float32, low_cpu_mem_usage=False)
     p = m.create_voice_clone_prompt(ref_audio=REF, ref_text=REF_TEXT)
