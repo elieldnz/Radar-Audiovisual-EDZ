@@ -207,23 +207,29 @@ Texto simples, sem markdown:
 - **Não rode o script antes da hora.** Primeiro rode, em primeiro plano, `timeout 1200 bash -c 'until grep -qE "QWEN_OK|rror" /tmp/setup_qwen.log 2>/dev/null; do sleep 15; done'; tail -c 300 /tmp/setup_qwen.log`. Se esse comando bater no limite de 10 minutos da ferramenta, rode de novo. Só passe para o script quando o log mostrar `QWEN_OK`, um erro, ou quando já tiverem passado 20 minutos desde o início da execução.
 - **Espere o script terminar** (a última linha de `/tmp/audio.log` começa com `voz=`) antes de enviar o e-mail.
 
-**Espere o preparo do passo 1 terminar por completo antes de rodar o script.** O comando do passo 1 só termina depois de instalar a voz clonada (cerca de 7 a 10 minutos); espere a notificação de término desse comando em segundo plano, ou use Monitor com `until grep -qE 'QWEN_OK|rror' /tmp/setup_qwen.log 2>/dev/null; do sleep 10; done`. Não rode o script só porque `SETUP_OK` apareceu: sem o Qwen pronto, o Radar sai com a pf_dora. Se passar de 20 minutos desde o início da execução, siga assim mesmo. A voz clonada é opcional: ela só é usada se `/tmp/setup_qwen.log` terminar com `QWEN_OK` **e** existir a amostra de voz `/tmp/voz_ref.ogg`. Sem qualquer uma das duas, o script usa a pf_dora sozinho, sem erro.
+**Espere o preparo do passo 1 terminar por completo antes de rodar o script.** O comando do passo 1 só termina depois de instalar a voz clonada (cerca de 7 a 10 minutos); espere a notificação de término desse comando em segundo plano, ou use Monitor com `until grep -qE 'QWEN_OK|rror' /tmp/setup_qwen.log 2>/dev/null; do sleep 10; done`. Não rode o script só porque `SETUP_OK` apareceu: sem o Qwen pronto, o Radar sai com a pf_dora. Se passar de 20 minutos desde o início da execução, siga assim mesmo. A voz clonada é opcional: ela só é usada se `/tmp/setup_qwen.log` terminar com `QWEN_OK` **e** a amostra da voz escolhida puder ser baixada (veja abaixo). Sem qualquer uma das duas, o script usa a pf_dora sozinho, sem erro.
 
-**Amostra de voz:** a amostra fica no Google Drive do Eliel (`voz_ref.ogg`, 13 s, privada), fora do repositório porque ele é público. O script a baixa pela API do Drive usando as mesmas credenciais do Gmail (o `GMAIL_REFRESH_TOKEN` precisa ter os escopos `gmail.send` e `drive.readonly`) e o ID do arquivo na variável `VOZ_DRIVE_ID`. Se faltar alguma dessas variáveis ou o download falhar, o Radar sai com a pf_dora. Nunca mostre o valor dessas variáveis.
+**Amostras de voz:** ficam no Google Drive do Eliel, privadas e fora do repositório porque ele é público. A variável `VOZ_ATIVA` escolhe a voz clonada (padrão `1`):
+- **Voz 1** (locutor, `voz_ref.ogg`, 13 s): ID do arquivo em `VOZ_DRIVE_ID`; a transcrição já está no script.
+- **Voz 2** (`voz2_ref.ogg`, 11 s): ID do arquivo em `VOZ2_DRIVE_ID` e transcrição exata em `VOZ2_REF_TEXT`.
+
+O script baixa a amostra pela API do Drive com as mesmas credenciais do Gmail (o `GMAIL_REFRESH_TOKEN` precisa dos escopos `gmail.send` e `drive.readonly`). Se faltar alguma variável da voz escolhida ou o download falhar, o Radar sai com a pf_dora. Nunca mostre o valor dessas variáveis.
 
 Crie `/tmp/radar_audio.py` com exatamente este conteúdo e rode `/tmp/venv/bin/python /tmp/radar_audio.py /tmp/Radar-EDZ-<Manha|Tarde|Extra>-<DD-MM>.mp3 > /tmp/audio.log 2>&1` **com run_in_background** (a voz clonada leva cerca de 5 minutos por minuto de áudio, mais do que o limite de um comando normal). Acompanhe `/tmp/audio.log` enquanto monta o HTML e o texto; o script termina sozinho em no máximo 25 minutos: se a próxima fala da voz clonada for passar de 22 minutos (estimativa pela média das falas anteriores), ele descarta o que fez e gera tudo de novo com a pf_dora (cerca de 1 minuto).
 ```python
 import json, os, sys, time, urllib.parse, urllib.request, numpy as np, lameenc
 LIMITE_CLONE_S = 22 * 60
-REF = '/tmp/voz_ref.ogg'
-REF_TEXT = 'O futuro não acontece por acaso. Ele nasce das escolhas que fazemos hoje, das conexões que criamos, dos caminhos que decidimos explorar. E é para quem enxerga o amanhã, desde agora, que a Tech Trip foi criada.'
+VOZ = os.environ.get('VOZ_ATIVA', '1').strip() or '1'
+PRE = 'VOZ_' if VOZ == '1' else 'VOZ%s_' % VOZ
+REF = '/tmp/voz%s_ref.ogg' % VOZ
+REF_TEXT = os.environ.get(PRE + 'REF_TEXT') or ('O futuro não acontece por acaso. Ele nasce das escolhas que fazemos hoje, das conexões que criamos, dos caminhos que decidimos explorar. E é para quem enxerga o amanhã, desde agora, que a Tech Trip foi criada.' if VOZ == '1' else '')
 d = json.load(open('/tmp/radar.json', encoding='utf-8'))
 falas = [t for t in ((s.get('fala') or (s.get('titulo', '') + '. ' + s.get('texto', ''))).strip() for s in d['slides']) if t]
 
 def baixar_ref():
     body = urllib.parse.urlencode({'client_id': os.environ['GMAIL_CLIENT_ID'], 'client_secret': os.environ['GMAIL_CLIENT_SECRET'], 'refresh_token': os.environ['GMAIL_REFRESH_TOKEN'], 'grant_type': 'refresh_token'}).encode()
     token = json.load(urllib.request.urlopen('https://oauth2.googleapis.com/token', data=body))['access_token']
-    req = urllib.request.Request('https://www.googleapis.com/drive/v3/files/%s?alt=media' % os.environ['VOZ_DRIVE_ID'], headers={'Authorization': 'Bearer ' + token})
+    req = urllib.request.Request('https://www.googleapis.com/drive/v3/files/%s?alt=media' % os.environ[PRE + 'DRIVE_ID'], headers={'Authorization': 'Bearer ' + token})
     open(REF, 'wb').write(urllib.request.urlopen(req, timeout=60).read())
 
 def clone():
@@ -231,6 +237,8 @@ def clone():
         raise RuntimeError('preparo do Qwen3-TTS incompleto')
     import torch
     from qwen_tts import Qwen3TTSModel
+    if not REF_TEXT:
+        raise RuntimeError('falta %sREF_TEXT' % PRE)
     if not os.path.exists(REF):
         baixar_ref()
     t0 = time.time()
@@ -257,7 +265,7 @@ def dora():
     return parts, sr
 
 try:
-    parts, sr = clone(); voz = 'clone'
+    parts, sr = clone(); voz = 'clone%s' % VOZ
 except Exception as e:
     print('clone indisponível (%s: %s); usando pf_dora' % (type(e).__name__, e), flush=True)
     parts, sr = dora(); voz = 'pf_dora'
@@ -269,7 +277,7 @@ mp3 = enc.encode(pcm) + enc.flush()
 open(sys.argv[1], 'wb').write(mp3)
 print('voz=%s duracao_s=%.0f bytes=%d' % (voz, len(audio) / sr, len(mp3)))
 ```
-A última linha de `/tmp/audio.log` traz `voz=clone` ou `voz=pf_dora` e a duração. Use a duração para a linha "🎧 Podcast de X min" do HTML. Se saiu `voz=pf_dora`, ponha na primeira linha de `/tmp/radar.txt` "Voz de reserva nesta edição: <motivo>", usando o motivo impresso no log (ex.: preparo incompleto, falta de `VOZ_DRIVE_ID`, limite de tempo). Se a geração falhar de vez, siga sem áudio (remova a linha do podcast do HTML) e registre o motivo.
+A última linha de `/tmp/audio.log` traz `voz=clone1`, `voz=clone2` ou `voz=pf_dora` e a duração. Use a duração para a linha "🎧 Podcast de X min" do HTML. Se saiu `voz=pf_dora`, ponha na primeira linha de `/tmp/radar.txt` "Voz de reserva nesta edição: <motivo>", usando o motivo impresso no log (ex.: preparo incompleto, falta da variável da voz, limite de tempo). Se a geração falhar de vez, siga sem áudio (remova a linha do podcast do HTML) e registre o motivo.
 
 ### 7E. Envio
 
