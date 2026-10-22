@@ -22,7 +22,7 @@ E, numa terceira chamada com run_in_background, o last30days e o yt-dlp da seç�
 3. **Radares anteriores:** no Gmail (conector), busque `subject:"Radar Audiovisual" newer_than:3d` e leia-os (get_message, PLAIN_TEXT). Base da regra anti-repetição (seções 5 e 11).
 4. **Pesquisa:** WebSearch e WebFetch. Para preço no Brasil e para páginas que o WebFetch devolve vazias, use o leitor da seção 4A. Para os perfis de marcas no TikTok e a reação da comunidade a um lançamento, use a seção 4B.
 5. **Monte os arquivos** (seção 7): `/tmp/radar.json` (JSON dos stories), `/tmp/radar.html` (e-mail visual) e `/tmp/radar.txt` (texto simples + bloco JSON do player). Valide o JSON com `python3 -m json.tool /tmp/radar.json`. Antes de gerar o MP3, releia cada `titulo`, `texto` e `fala` procurando os padrões da seção 9A e reescreva o que tiver cara de IA.
-6. **Gere o MP3** (seção 7D).
+6. **Gere o MP3** (seção 7D), seguindo as regras obrigatórias de lá: espere o preparo da voz clonada terminar e use o script da 7D sem mudar nada. Um Radar que demora 30 minutos com a voz clonada é melhor do que um que sai em 5 com a pf_dora por pressa.
 7. **Envie** (seção 7E). Sempre e somente para **elieldnz@gmail.com**. Não envie nada para outro destinatário, não responda, não apague e não altere outros e-mails. Envie **um** e-mail por execução. Ao terminar, diga em uma linha se o e-mail foi enviado, com ou sem áudio, e o assunto.
 
 ---
@@ -114,11 +114,11 @@ Com `--precos`, cada linha traz o nome do produto, o preço e o link. A busca da
 
 Só use se `/tmp/setup_l30.log` tiver `L30_OK`. Se não tiver, siga sem esta seção.
 
-**1. Perfis de marcas no TikTok (toda execução).** Lista os últimos vídeos de cada perfil, com data, visualizações, legenda e link:
+**1. Perfis de marcas no TikTok (obrigatório em toda execução; não pule para ganhar tempo).** Lista os últimos vídeos de cada perfil, com data, visualizações, legenda e link:
 ```
 for h in sonyelectronics canonusa dji_official insta360_official gopro blackmagicdesign capcut; do timeout 60 /tmp/ytv/bin/yt-dlp --flat-playlist --playlist-end 5 --print "@$h | %(timestamp>%Y-%m-%d)s | %(view_count)s views | %(title).150s | %(webpage_url)s" "https://www.tiktok.com/@$h" 2>/dev/null; done
 ```
-Olhe só os vídeos publicados desde o Radar anterior. A maioria é publicidade ou conteúdo de criador e deve ser ignorada. O que interessa é anúncio de produto, recurso novo ou teaser de lançamento: use como pista e confirme na fonte oficial ou num veículo especializado antes de virar story. Se só o TikTok da marca confirmar, o status é "declaração" e a fonte é o link do vídeo. Perfil que der erro não é notícia; siga com os outros.
+Olhe só os vídeos publicados desde o Radar anterior. A maioria é publicidade ou conteúdo de criador e deve ser ignorada. O que interessa é anúncio de produto, recurso novo ou teaser de lançamento: use como pista e confirme na fonte oficial ou num veículo especializado antes de virar story. Se só o TikTok da marca confirmar, o status é "declaração" e a fonte é o link do vídeo. Perfil que der erro não é notícia; siga com os outros. Se o comando inteiro falhar, diga isso no relatório final.
 
 **2. Reação da comunidade a um lançamento (no máximo 2 vezes por execução).** Para o destaque ou uma novidade de Equipamentos com nome de produto exato (ex.: "Sony ECM-W5"), o last30days busca o que se disse nos últimos 30 dias no Reddit e no YouTube (vídeos de review e os comentários mais curtidos). Não use para temas amplos ("OBS", "lives"): o resultado vem cheio de ruído. Escreva o plano e rode:
 ```
@@ -202,6 +202,11 @@ Texto simples, sem markdown:
 
 ### 7D. MP3 com a voz clonada (Qwen3-TTS), com pf_dora de reserva
 
+**Regras obrigatórias desta seção:**
+- **Nunca escreva outro script de áudio**, nem uma versão simplificada só com a pf_dora. Grave `/tmp/radar_audio.py` com exatamente o conteúdo abaixo. Ele já cai sozinho na pf_dora quando a voz clonada não está disponível.
+- **Não rode o script antes da hora.** Primeiro rode, em primeiro plano, `timeout 1200 bash -c 'until grep -qE "QWEN_OK|rror" /tmp/setup_qwen.log 2>/dev/null; do sleep 15; done'; tail -c 300 /tmp/setup_qwen.log`. Se esse comando bater no limite de 10 minutos da ferramenta, rode de novo. Só passe para o script quando o log mostrar `QWEN_OK`, um erro, ou quando já tiverem passado 20 minutos desde o início da execução.
+- **Espere o script terminar** (a última linha de `/tmp/audio.log` começa com `voz=`) antes de enviar o e-mail.
+
 **Espere o preparo do passo 1 terminar por completo antes de rodar o script.** O comando do passo 1 só termina depois de instalar a voz clonada (cerca de 7 a 10 minutos); espere a notificação de término desse comando em segundo plano, ou use Monitor com `until grep -qE 'QWEN_OK|rror' /tmp/setup_qwen.log 2>/dev/null; do sleep 10; done`. Não rode o script só porque `SETUP_OK` apareceu: sem o Qwen pronto, o Radar sai com a pf_dora. Se passar de 20 minutos desde o início da execução, siga assim mesmo. A voz clonada é opcional: ela só é usada se `/tmp/setup_qwen.log` terminar com `QWEN_OK` **e** existir a amostra de voz `/tmp/voz_ref.ogg`. Sem qualquer uma das duas, o script usa a pf_dora sozinho, sem erro.
 
 **Amostra de voz:** a amostra fica no Google Drive do Eliel (`voz_ref.ogg`, 13 s, privada), fora do repositório porque ele é público. O script a baixa pela API do Drive usando as mesmas credenciais do Gmail (o `GMAIL_REFRESH_TOKEN` precisa ter os escopos `gmail.send` e `drive.readonly`) e o ID do arquivo na variável `VOZ_DRIVE_ID`. Se faltar alguma dessas variáveis ou o download falhar, o Radar sai com a pf_dora. Nunca mostre o valor dessas variáveis.
@@ -264,7 +269,7 @@ mp3 = enc.encode(pcm) + enc.flush()
 open(sys.argv[1], 'wb').write(mp3)
 print('voz=%s duracao_s=%.0f bytes=%d' % (voz, len(audio) / sr, len(mp3)))
 ```
-A última linha de `/tmp/audio.log` traz `voz=clone` ou `voz=pf_dora` e a duração. Use a duração para a linha "🎧 Podcast de X min" do HTML. Se a geração falhar de vez, siga sem áudio (remova a linha do podcast do HTML) e registre o motivo.
+A última linha de `/tmp/audio.log` traz `voz=clone` ou `voz=pf_dora` e a duração. Use a duração para a linha "🎧 Podcast de X min" do HTML. Se saiu `voz=pf_dora`, ponha na primeira linha de `/tmp/radar.txt` "Voz de reserva nesta edição: <motivo>", usando o motivo impresso no log (ex.: preparo incompleto, falta de `VOZ_DRIVE_ID`, limite de tempo). Se a geração falhar de vez, siga sem áudio (remova a linha do podcast do HTML) e registre o motivo.
 
 ### 7E. Envio
 
